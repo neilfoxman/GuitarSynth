@@ -36,16 +36,21 @@ axis[2].plot(t,sig3)
 axis[2].set_xlabel('Time')
 axis[2].set_ylabel('Amplitude')
 
-trans1 = np.fft.fft(sig3)/len(sig3) # Normalize
-trans2 = trans1[range(int(len(sig3)/2))] # Exclude above fNyquist
+trans1 = np.fft.fft(sig3)#/len(sig3) # Normalize (
+f1 = np.fft.fftfreq(len(sig3), Ts)
+print("Input signal is ", len(sig3), " long")
+print("Output of fft() is ", len(trans1), " long")
+print(len(f1), " frequency bins created")
+print("fft result is of type ", trans1.dtype)
 
-tpCount = len(sig3)
-values = np.arange(int(tpCount/2))
-T = tpCount/fs
-f = values/T
+# Exclude redundant frequencies in discrete transform
+usablebins = range(int(len(sig3)/2))
+trans2 = trans1[usablebins]
+f2 = f1[usablebins]
+
 
 axis[3].set_title('Fourier transform')
-axis[3].plot(f,abs(trans2))
+axis[3].plot(f2,abs(trans2))
 axis[3].set_xlabel('Frequency')
 axis[3].set_ylabel('Amplitude')
 
