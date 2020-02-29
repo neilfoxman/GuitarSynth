@@ -16,6 +16,11 @@ sudo apt-get install python-all-dev
 sudo apt-get install portaudio19-dev
 sudo apt-get install python-pyaudio python3-pyaudio
 ```
+
+I had issues installing matplotlib using pip for debugging, but installing it through apt-get worked
+```
+sudo apt-get install python-matplotlib
+```
 ### Testing
 Use the command below to check the audio devices/cards available.
 USB device should be card 1
