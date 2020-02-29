@@ -41,7 +41,7 @@ trans2 = trans1[range(int(len(sig3)/2))] # Exclude above fNyquist
 
 tpCount = len(sig3)
 values = np.arange(int(tpCount/2))
-T = tpCount/Ts
+T = tpCount/fs
 f = values/T
 
 axis[3].set_title('Fourier transform')
