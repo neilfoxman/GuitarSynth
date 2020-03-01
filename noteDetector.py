@@ -1,4 +1,5 @@
 # https://www.youtube.com/watch?v=AShHJdSIxkY
+# https://github.com/markjay4k/Audio-Spectrum-Analyzer-in-Python/blob/master/audio_spectrum.py
 import pyaudio
 import struct
 import numpy as np
