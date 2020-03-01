@@ -53,7 +53,10 @@ axis[2].set_ylabel('Amplitude')
 #noNote = Note(-1)
 
 def frequencyToMidiNote(f):
-    return 12.0*math.log(float(f)/27.5,2)+21
+    if(f <=0):
+        return 0
+    else:
+        return 12.0*math.log(float(f)/27.5,2)+21
 
 def midiNoteToFrequency(midiNote):
     return 27.5*2.0**((float(midiNote)-21.0)/12.0)
@@ -99,41 +102,51 @@ def generatePlayableNoteArray(numNotes):
     noteArr = np.array(noteList)
     return noteArr
 
-def runFFT(signal, signalLength, samplePeriod):
-    # Transform array into frequency domain
-    transformed_all = np.fft.rfft(signal)#/len(sig3) # Normalize (
+def generateFrequencyArray(signalLength, samplePeriod):
+    # Fng frequencies that would be used given a signal sample length and sample period
     farray_all = np.fft.fftfreq(signalLength, samplePeriod)
     
+    # Create dummy signal and runn fft to get appropriate length of transformation
+    dummySig = np.zeros(signalLength)
+    dummyTransformed = np.fft.rfft(dummySig)
+    
     # Exclude redundant frequencies due to discrete transform
-    usablebins = range(len(transformed_all) - 1) # last bin is negative frequency
-    transformed = transformed_all[usablebins]
-    farray = abs(farray_all[usablebins])
+    usableBins = range(len(dummyTransformed) - 1) # last bin is negative frequency
+    farray = farray_all[usableBins]
     
     # Debug
-    print("Input signal is ", len(signal), " long")
-    print("Output of fft() is ", len(transformed), " long")
+    print("Dummy Input signal is ", len(dummySig), " long")
+    print("Dummy Output of fft() is ", len(dummyTransformed), " long")
     print(len(farray), " frequency bins created by fftfreq")
+    print("Asserting that there are ", len(usableBins), " usable bins")
+    
+    return farray, usableBins
+
+def runFFT(signal, rangeOfUsableBins):
+    # Transform array into frequency domain
+    transformed_all = np.fft.rfft(signal)#/len(sig3) # Normalize (
+    
+    # Exclude redundant frequencies due to discrete transform
+    transformed = abs(transformed_all[rangeOfUsableBins])
+    
+    # Debug
+    print("Input signal is ", len(dummySig), " long")
+    print("Output of fft() is ", len(dummyTransformed), " long")
     print("fft result is of type ", transformed.dtype)
-    print("Asserting that there are ", len(usablebins), " usable bins")
-    
-    return transformed, farray
 
-def detectNote(detectionThreshold#,
-               #frequencyToNoteMap, currentNotes, previousNotes
-               ):
+    return transformed
 
-
-    
-#     # Detect frequencies above threshold
-#     f = 0 # start inspecting frequencies in farray
-#     while idx < len(farray):
-#         # If the frequency inspectied is high
-#         if tranformed[idx] > detectionThreshold:
-#             # Find corresponding midi note number
-#             midiNote = frequencyToNoteMap[idx]
-#             
-#             # Set note to playing
-#             currentNotes[midiNote].isPlaying = True
+def detectNote(farr, transarr, detectionThreshold):#, frequencyToNoteMap, currentNotes, previousNotes):
+    # Detect frequencies above threshold
+    f = 0 # start inspecting frequencies in farray
+    while idx < len(farr):
+        # If the frequency inspected is higher than threshold
+        if transarr[idx] > detectionThreshold:
+            # Find corresponding midi note number
+            midiNote = frequencyToNoteMap[idx]
+            
+            # Set note to playing
+            currentNotes[midiNote].isPlaying = True
             return
             
             
@@ -144,7 +157,18 @@ def detectNote(detectionThreshold#,
 
 # Create an array of all the playable notes (127 of them)
 masterNoteArr = generatePlayableNoteArray(127)
-transformed, frequencies = runFFT(sig3,len(sig3),Ts)
+
+# Generate array of frequencies corresponding to the fft bins when it runs
+signalLength = len(sig3)
+farray, usableBins = generateFrequencyArray(signalLength, Ts)
+
+# Assign each frequency to a Midi Note
+noteMap = mapFrequenciesToNotes(farray)
+
+# Run fft
+transformed = runFFT(sig3,usableBins)
+
+# Run note detection
 noteDetectionThreshold = 0.5
 
 
