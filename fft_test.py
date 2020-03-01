@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 #from scipy.fftpack import rfft, fftfreq
 import math
 
-fs = 100.0
+fs = 44100.0
 Ts = 1/fs
 
 t0 = 0
-tf = 10
+tf = 0.1
 
-f1 = 4
-f2 = 7
+f1 = 440.0
+f2 = 261.6
 
 t = np.arange(t0, tf, Ts)
 
@@ -21,12 +21,12 @@ sig2 = np.sin(2*np.pi*f2*t)
 figure, axis = plt.subplots(4,1)
 plt.subplots_adjust(hspace=1)
 
-axis[0].set_title('Sin wave f = 4 Hz')
+axis[0].set_title('First sin wave')
 axis[0].plot(t,sig1)
 axis[0].set_xlabel('Time')
 axis[0].set_ylabel('Amplitude')
 
-axis[1].set_title('Sin wave f = 7 Hz')
+axis[1].set_title('Second sin wave')
 axis[1].plot(t,sig2)
 axis[1].set_xlabel('Time')
 axis[1].set_ylabel('Amplitude')
@@ -49,38 +49,103 @@ axis[2].set_ylabel('Amplitude')
 # print(len(f1), " frequency bins created")
 # print("fft result is of type ", trans1.dtype)
 
+# Empty note used for error checking
+#noNote = Note(-1)
+
 def frequencyToMidiNote(f):
-	return 12.0*math.log(float(fspike)/27.5,2)+21
+    return 12.0*math.log(float(f)/27.5,2)+21
 
 def midiNoteToFrequency(midiNote):
-	return 27.5*2.0**((float(midiNote)-21.0)/12.0)
+    return 27.5*2.0**((float(midiNote)-21.0)/12.0)
 
-def detectNote(signal, lenSignal, samplePeriod, detectionThreshold):
+class Note:
+    def __init__(self, midiNum):
+        self.midiNum = float(midiNum)
+        self.frequency = midiNoteToFrequency(self.midiNum)
+        #self.frequency_lowerBound = midiNoteToFrequency(self.midiNum - 0.5)
+        #self.frequency_upperBound = midiNoteToFrequency(self.midiNum + 0.5)
+        self.isPlaying = False
+        
+#     def isWithinBounds(self, inspectedFrequency):
+#         if inspectedFrequency > self.frequency_lowerBound:
+#             if inspectedFrequency < self.frequency_upperBound:
+#                 return True
+#         return False
+    
+def mapFrequenciesToNotes(fArray):
+    # Create list of notes
+    noteList = []
+    
+    # Assign each frequency a midi note and add it to the list
+    for f in farray:
+        midiNum = frequencyToMidiNote(f)
+        noteList.append(int(round(midiNum)))
+        
+    # By now you should have a list of notes the same size as the farray
+    # Convert the list into an array
+    noteArray = np.array(noteList)
+    return noteArray
+    
+# def findCorrespondingNote(inspectedFrequency, arrayOfNotes):
+#     for note in arrayofNotes:
+#         if note.isWithinBounds(inspectedFrequency):
+#             return note
+#     return noNote
+
+def generatePlayableNoteArray(numNotes):
+    noteList = []
+    for i in range(numNotes):
+        noteList.append(Note(i))
+    noteArr = np.array(noteList)
+    return noteArr
+
+def runFFT(signal, signalLength, samplePeriod):
     # Transform array into frequency domain
-    transformed = np.fft.rfft(signal)#/len(sig3) # Normalize (
-    farray = np.fft.fftfreq(lenSignal, samplePeriod)
-    print("Input signal is ", len(signal), " long")
-    print("Output of fft() is ", len(transformed), " long")
-    print(len(farray), " frequency bins created")
-    print("fft result is of type ", transformed.dtype)
+    transformed_all = np.fft.rfft(signal)#/len(sig3) # Normalize (
+    farray_all = np.fft.fftfreq(signalLength, samplePeriod)
     
     # Exclude redundant frequencies due to discrete transform
-	usablebins = range(len(trans1) - 1) # last bin is negative frequency
-	trans2 = trans1[usablebins]
-	f2 = f1[usablebins]
+    usablebins = range(len(transformed_all) - 1) # last bin is negative frequency
+    transformed = transformed_all[usablebins]
+    farray = abs(farray_all[usablebins])
     
-    # Detect frequencies above threshold
-    # TODO
-    
-    # Convert frequencies to midi note numbers
-    
-    
+    # Debug
+    print("Input signal is ", len(signal), " long")
+    print("Output of fft() is ", len(transformed), " long")
+    print(len(farray), " frequency bins created by fftfreq")
+    print("fft result is of type ", transformed.dtype)
+    print("Asserting that there are ", len(usablebins), " usable bins")
     
     return transformed, farray
+
+def detectNote(detectionThreshold#,
+               #frequencyToNoteMap, currentNotes, previousNotes
+               ):
+
+
     
-trans1, f1 = detectNote(sig3, len(sig3), Ts, 0)
+#     # Detect frequencies above threshold
+#     f = 0 # start inspecting frequencies in farray
+#     while idx < len(farray):
+#         # If the frequency inspectied is high
+#         if tranformed[idx] > detectionThreshold:
+#             # Find corresponding midi note number
+#             midiNote = frequencyToNoteMap[idx]
+#             
+#             # Set note to playing
+#             currentNotes[midiNote].isPlaying = True
+            return
+            
+            
+            
+        
+    
+    # Convert frequencies to midi note numbers
 
-
+# Create an array of all the playable notes (127 of them)
+masterNoteArr = generatePlayableNoteArray(127)
+transformed, frequencies = runFFT(sig3,len(sig3),Ts)
+noteDetectionThreshold = 0.5
 
 
 # Checking that frequency amplitude is aligned to correct frequency
@@ -91,8 +156,8 @@ trans1, f1 = detectNote(sig3, len(sig3), Ts, 0)
 
 
 axis[3].set_title('Fourier transform')
-axis[3].plot(f2,abs(trans2))
+axis[3].plot(frequencies,abs(transformed))
 axis[3].set_xlabel('Frequency')
 axis[3].set_ylabel('Amplitude')
 
-plt.show()
+#plt.show()
