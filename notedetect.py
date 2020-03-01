@@ -222,6 +222,7 @@ class NoteDetector:
         while idx < self.numUsableBins:
             # If the spectrum amplitude is higher than threshold
             if self.transformed[idx] > self.noteDetectionThreshold:
+                print("Detected note: idx=",idx)
                 # Find corresponding midi note number
                 noteNum = self.noteMap[idx]
                 
@@ -241,8 +242,8 @@ class NoteDetector:
                     # Start looking at its lowest frequency bin
                     idx = self.masterNoteArray[nextNoteNum].lowestNoteIdx
                     
-#                     # Debug
-#                     print("skipping to idx=", idx)
+                    # Debug
+                    print("skipping to idx=", idx)
                 else:
                     # We have finished note inspection, kick out
                     break
@@ -281,7 +282,7 @@ if __name__ == '__main__':
     t = np.arange(t0, tf, Ts)
 
     sig1 = np.sin(2*np.pi*f1*t)
-    sig2 = np.sin(2*np.pi*f2*t)
+    sig2 = 2*np.sin(2*np.pi*f2*t)
 
     figure, axis = plt.subplots(4,1)
     plt.subplots_adjust(hspace=1)
@@ -319,7 +320,7 @@ if __name__ == '__main__':
     axis[3].set_xlabel('Frequency')
     axis[3].set_ylabel('Amplitude')
     
-    #plt.show()
+    plt.show()
     
     
     

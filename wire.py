@@ -3,6 +3,7 @@ import time
 import numpy as np
 from subprocess import PIPE, Popen
 import shlex
+import notedetect
 
 FORMAT = np.int16
 CHANNELS = 1
@@ -20,7 +21,7 @@ ENCODINGS_MAPPING_PYAUDIO = {
     np.float32: pyaudio.paFloat32,
 }
 
-BYPASS = True # Callback will pass the audio without modulating
+BYPASS = False # Callback will pass the audio without modulating
 OVERDRIVE_CMD = "overdrive 10 10" # gain, color
 CHORUS_CMD = "chorus 0.7 0.9 55 0.4 0.25 2 -t" # gain-in gain-out delay decay speed depth sin/triangle
 DELAY_CMD = "delay 0.5" # seconds
@@ -29,6 +30,11 @@ PHASE_CMD = "phaser 0.89 0.85 1 0.24 2 -t" # gain-in gain-out delay decay speed 
 PITCH_CMD = "pitch 10" # cents
 REVERB_CMD = "reverb -w" # wet (vs dry)
 TEMOLO_CMD = "tremolo 20 40" # speed depth
+
+framesPerBuffer = 2048
+samplingPeriod = 1.0/float(RATE)
+nd = notedetect.NoteDetector(framesPerBuffer, samplingPeriod)
+nd.noteDetectionThreshold = 0.1*len(nd.usableBins)*32767
 
 p = pyaudio.PyAudio()
 
@@ -51,20 +57,38 @@ def callback(in_data, frame_count, time_info, status):
     #print("Time info:", time_info)
     #print("Status:", status)
     
-    if BYPASS:
+    if BYPASS: #Store slice of in_data
         return(in_data, pyaudio.paContinue)
 
     stdin = np.frombuffer(in_data, dtype=FORMAT)
-    stdout, stderr = Popen(CMD_PREFIX, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(stdin.tobytes(order='F'))
+    #print(list(stdin))
+    #stdout, stderr = Popen(CMD_PREFIX, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(stdin.tobytes(order='F'))
     
-    return (stdout, pyaudio.paContinue)
+    nd.runFFT(stdin)
+    
+    # Run note detection
+    startNotes, stopNotes = nd.detectNotes()
+    
+    # No notes should be started
+    print("Second sample")
+    print("Notes started:")
+    for noteNum in startNotes:
+        print(noteNum)
+    
+    # One note should be stopped
+    print("Notes stopped:")
+    for noteNum in stopNotes:
+        print(noteNum)
+    
+    #return (stdout, pyaudio.paContinue)
+    return (stdin, pyaudio.paStop)
 
 stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
                 channels=CHANNELS,
                 rate=RATE,
                 input=True,
                 output=True,
-                frames_per_buffer=1056,
+                frames_per_buffer=framesPerBuffer,
                 stream_callback=callback)
 
 stream.start_stream()
