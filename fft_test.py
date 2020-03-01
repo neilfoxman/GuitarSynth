@@ -1,6 +1,8 @@
 # https://pythontic.com/visualization/signals/fouriertransform_fft
 import numpy as np
 import matplotlib.pyplot as plt
+#from scipy.fftpack import rfft, fftfreq
+import math
 
 fs = 100.0
 Ts = 1/fs
@@ -37,17 +39,49 @@ axis[2].set_xlabel('Time')
 axis[2].set_ylabel('Amplitude')
 
 
-trans1 = np.fft.rfft(sig3)#/len(sig3) # Normalize (
-f1 = np.fft.fftfreq(len(sig3), Ts)
-print("Input signal is ", len(sig3), " long")
-print("Output of fft() is ", len(trans1), " long")
-print(len(f1), " frequency bins created")
-print("fft result is of type ", trans1.dtype)
 
-# Exclude redundant frequencies in discrete transform
-usablebins = range(len(trans1) - 1) # last bin is negative frequency
-trans2 = trans1[usablebins]
-f2 = f1[usablebins]
+# trans1 = np.fft.rfft(sig3)#/len(sig3) # Normalize (
+# f1 = np.fft.fftfreq(len(sig3), Ts)
+# #trans1 = rfft(sig3)#/len(sig3) # Normalize (
+# #f1 = fftfreq(len(sig3), Ts)
+# print("Input signal is ", len(sig3), " long")
+# print("Output of fft() is ", len(trans1), " long")
+# print(len(f1), " frequency bins created")
+# print("fft result is of type ", trans1.dtype)
+
+def frequencyToMidiNote(f):
+	return 12.0*math.log(float(fspike)/27.5,2)+21
+
+def midiNoteToFrequency(midiNote):
+	return 27.5*2.0**((float(midiNote)-21.0)/12.0)
+
+def detectNote(signal, lenSignal, samplePeriod, detectionThreshold):
+    # Transform array into frequency domain
+    transformed = np.fft.rfft(signal)#/len(sig3) # Normalize (
+    farray = np.fft.fftfreq(lenSignal, samplePeriod)
+    print("Input signal is ", len(signal), " long")
+    print("Output of fft() is ", len(transformed), " long")
+    print(len(farray), " frequency bins created")
+    print("fft result is of type ", transformed.dtype)
+    
+    # Exclude redundant frequencies due to discrete transform
+	usablebins = range(len(trans1) - 1) # last bin is negative frequency
+	trans2 = trans1[usablebins]
+	f2 = f1[usablebins]
+    
+    # Detect frequencies above threshold
+    # TODO
+    
+    # Convert frequencies to midi note numbers
+    
+    
+    
+    return transformed, farray
+    
+trans1, f1 = detectNote(sig3, len(sig3), Ts, 0)
+
+
+
 
 # Checking that frequency amplitude is aligned to correct frequency
 # finspect = range(39,42) # 4 Hz

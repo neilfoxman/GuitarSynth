@@ -19,7 +19,7 @@ sudo apt-get install python-pyaudio python3-pyaudio
 
 I had issues installing matplotlib using pip for debugging, but installing it through apt-get worked
 ```
-sudo apt-get install python-matplotlib
+sudo apt-get install python-numpy python-scipy python-matplotlib ipython python-pandas python-sympy python-nose
 ```
 ### Testing
 Use the command below to check the audio devices/cards available.
@@ -95,3 +95,6 @@ When the USB audio device is connected, you get these additional devices:
 ('maxOutputChannels=', 128L)
 ('hostApi=', 0L)
 ```
+
+Apparently Scipy is faster than numpi at fft according to https://stackoverflow.com/questions/6363154/what-is-the-difference-between-numpy-fft-and-scipy-fftpack
+Currently unuse - to investigate later
