@@ -21,6 +21,11 @@ I had issues installing matplotlib using pip for debugging, but installing it th
 ```
 sudo apt-get install python-numpy python-scipy python-matplotlib ipython python-pandas python-sympy python-nose
 ```
+
+The system must also have [SoX](http://sox.sourceforge.net/) installed for wire.py.
+
+For Debian-based operating systems: `sudo apt-get install sox`
+
 ### Testing
 Use the command below to check the audio devices/cards available.
 USB device should be card 1
