@@ -52,12 +52,8 @@ CMD_PREFIX = shlex.split(
             posix=False,)
 
 def callback(in_data, frame_count, time_info, status):
-    #print("In:", type(in_data), type(in_data[0]), in_data)
-    #print("Frame count:", frame_count)
-    #print("Time info:", time_info)
-    #print("Status:", status)
-    
-    if BYPASS: #Store slice of in_data
+
+    if BYPASS: 
         return(in_data, pyaudio.paContinue)
 
     stdin = np.frombuffer(in_data, dtype=FORMAT)
@@ -68,6 +64,18 @@ def callback(in_data, frame_count, time_info, status):
     
     # Run note detection
     startNotes, stopNotes = nd.detectNotes()
+    # [0, 0, 62, 62, 62, 0, 0, 64, 64, 64] -> byte array
+    
+    
+    voice = np.zeros(framesPerBuffer)
+    t = np.arange(framesPerBuffer)
+    for note in nd.currentNotes:
+        f = notedetect.midiNoteToFrequency(note)
+        #voice += 50*np.sin(2*np.pi*f*t)
+        voice = (2000*np.sin(2*np.pi*np.arange(framesPerBuffer)*f/RATE)).astype(FORMAT).tobytes()
+        pass
+    
+    
     
     # No notes should be started
     if(len(startNotes) > 0):
@@ -79,7 +87,7 @@ def callback(in_data, frame_count, time_info, status):
         for noteNum in stopNotes:
             print("Stopped:",noteNum)
     
-    return (stdin, pyaudio.paContinue)
+    return (voice, pyaudio.paContinue)
     #return (stdin, pyaudio.paStop)
 
 stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
