@@ -4,6 +4,7 @@ import numpy as np
 from subprocess import PIPE, Popen
 import shlex
 import notedetect
+import mido
 
 FORMAT = np.int16
 CHANNELS = 1
@@ -34,7 +35,7 @@ TEMOLO_CMD = "tremolo 20 40" # speed depth
 framesPerBuffer = 2**11
 samplingPeriod = 1.0/float(RATE)
 nd = notedetect.NoteDetector(framesPerBuffer, samplingPeriod)
-nd.noteDetectionThreshold = 0.1*len(nd.usableBins)*32767
+nd.noteDetectionThreshold = 0.2*len(nd.usableBins)*32767
 
 p = pyaudio.PyAudio()
 
@@ -75,16 +76,20 @@ def callback(in_data, frame_count, time_info, status):
         voice = (2000*np.sin(2*np.pi*np.arange(framesPerBuffer)*f/RATE)).astype(FORMAT).tobytes()
         pass
     
-    
-    
     # No notes should be started
     if(len(startNotes) > 0):
         for noteNum in startNotes:
+            with mido.open_output('Midi Through:Midi Through Port-0 14:0') as outport:
+                msg = mido.Message('note_on', note=noteNum)
+                outport.send(msg)
             print("Started:",noteNum)
     
     # One note should be stopped
     if(len(stopNotes) > 0):
         for noteNum in stopNotes:
+            with mido.open_output('Midi Through:Midi Through Port-0 14:0') as outport:
+                msg = mido.Message('note_off', note=noteNum)
+                outport.send(msg)
             print("Stopped:",noteNum)
     
     return (voice, pyaudio.paContinue)

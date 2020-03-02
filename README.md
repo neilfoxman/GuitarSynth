@@ -15,6 +15,7 @@ https://people.csail.mit.edu/hubert/pyaudio/
 sudo apt-get install python-all-dev
 sudo apt-get install portaudio19-dev
 sudo apt-get install python-pyaudio python3-pyaudio
+sudo pip3 install mido python-rtmidi
 ```
 
 I had issues installing matplotlib using pip for debugging, but installing it through apt-get worked
@@ -103,3 +104,52 @@ When the USB audio device is connected, you get these additional devices:
 
 Apparently Scipy is faster than numpi at fft according to https://stackoverflow.com/questions/6363154/what-is-the-difference-between-numpy-fft-and-scipy-fftpack
 Currently unuse - to investigate later
+
+```
+sudo apt-get install alsa-base alsa-utils
+sudo apt-get install aconnectgui
+```
+
+From http://andrewdotni.ch/blog/2015/02/28/midi-synth-with-raspberry-p/
+```
+sudo apt-get install fluidsynth
+```
+
+In one terminal window:
+
+```
+fluidsynth --audio-driver=alsa --gain 3 /usr/share/sounds/sf2/FluidR3_GM.sf2
+```
+
+Run
+```
+qjackctl
+```
+Click Connect and make connections on the ALSA tab.
+
+The 0:Midi Through Port-0 (14:Midi Through dropdown) on left side was connected to
+0:Synth input port (131:FLUID Synth) on right side.
+
+
+Alternatively, get connection in another terminal window:
+```
+aconnect -o # note Fluid Synth client number as yyy
+aconnect -i # note Midi Through client number as xx
+aconnect xx:0 yy:0 # example aconnect 14:0 131:0
+```
+
+
+
+Nothing on patchbay screen
+
+
+# Other Stuff (unused):
+
+Added some software synths via Start -> Preferences -> Add/Remove Software
+
+Note default raspi pasword is "raspberry".  Needed to install software.
+
+Synthesised pipe organ emulator (misspelled)
+Realtime modular synthesizer for ALSO
+vintage synthesizer emulator
+vintage synthesizer emulator (data files)
