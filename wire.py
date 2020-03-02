@@ -5,10 +5,15 @@ from subprocess import PIPE, Popen
 import shlex
 import notedetect
 import mido
+from soxCommands import *
 
+# INIT #
+BYPASS = False # Callback will pass the audio without modulating
 FORMAT = np.int16
 CHANNELS = 1
 RATE = 44100
+FRAMES = 2**9 if BYPASS else 2**11
+PERIOD = 1.0/float(RATE)
 
 ENCODINGS_MAPPING = {
     np.int8: 's8',
@@ -22,23 +27,15 @@ ENCODINGS_MAPPING_PYAUDIO = {
     np.float32: pyaudio.paFloat32,
 }
 
-BYPASS = False # Callback will pass the audio without modulating
-OVERDRIVE_CMD = "overdrive 10 10" # gain, color
-CHORUS_CMD = "chorus 0.7 0.9 55 0.4 0.25 2 -t" # gain-in gain-out delay decay speed depth sin/triangle
-DELAY_CMD = "delay 0.5" # seconds
-FLANGER_CMD = "flanger"
-PHASE_CMD = "phaser 0.89 0.85 1 0.24 2 -t" # gain-in gain-out delay decay speed sin/triangle
-PITCH_CMD = "pitch 10" # cents
-REVERB_CMD = "reverb -w" # wet (vs dry)
-TEMOLO_CMD = "tremolo 20 40" # speed depth
-
-framesPerBuffer = 2**11
-samplingPeriod = 1.0/float(RATE)
-nd = notedetect.NoteDetector(framesPerBuffer, samplingPeriod)
+# MAIN CLASSES #
+nd = notedetect.NoteDetector(FRAMES, PERIOD)
 nd.noteDetectionThreshold = 0.2*len(nd.usableBins)*32767
-
 p = pyaudio.PyAudio()
 
+# MIDO PORT #
+outport = mido.open_output('Midi Through:Midi Through Port-0 14:0')
+
+# SOX CMD #
 def numpyArrayToCMD():
     return ' '.join([
         '-t ' + ENCODINGS_MAPPING[FORMAT],
@@ -52,6 +49,7 @@ CMD_PREFIX = shlex.split(
                 OVERDRIVE_CMD]),
             posix=False,)
 
+# CALLBACK #
 def callback(in_data, frame_count, time_info, status):
 
     if BYPASS: 
@@ -62,34 +60,27 @@ def callback(in_data, frame_count, time_info, status):
     #stdout, stderr = Popen(CMD_PREFIX, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(stdin.tobytes(order='F'))
     
     nd.runFFT(stdin)
-    
-    # Run note detection
     startNotes, stopNotes = nd.detectNotes()
-    # [0, 0, 62, 62, 62, 0, 0, 64, 64, 64] -> byte array
     
     
-    voice = np.zeros(framesPerBuffer)
-    t = np.arange(framesPerBuffer)
+    voice = np.zeros(FRAMES)
+    t = np.arange(FRAMES)
     for note in nd.currentNotes:
         f = notedetect.midiNoteToFrequency(note)
         #voice += 50*np.sin(2*np.pi*f*t)
-        voice = (2000*np.sin(2*np.pi*np.arange(framesPerBuffer)*f/RATE)).astype(FORMAT).tobytes()
+        voice = (2000*np.sin(2*np.pi*np.arange(FRAMES)*f/RATE)).astype(FORMAT).tobytes()
         pass
     
     # No notes should be started
     if(len(startNotes) > 0):
         for noteNum in startNotes:
-            with mido.open_output('Midi Through:Midi Through Port-0 14:0') as outport:
-                msg = mido.Message('note_on', note=noteNum)
-                outport.send(msg)
+            outport.send(mido.Message('note_on', note=noteNum))
             print("Started:",noteNum)
     
     # One note should be stopped
     if(len(stopNotes) > 0):
         for noteNum in stopNotes:
-            with mido.open_output('Midi Through:Midi Through Port-0 14:0') as outport:
-                msg = mido.Message('note_off', note=noteNum)
-                outport.send(msg)
+            outport.send(mido.Message('note_off', note=noteNum))
             print("Stopped:",noteNum)
     
     return (voice, pyaudio.paContinue)
@@ -100,7 +91,7 @@ stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
                 rate=RATE,
                 input=True,
                 output=True,
-                frames_per_buffer=framesPerBuffer,
+                frames_per_buffer=FRAMES,
                 stream_callback=callback)
 
 stream.start_stream()
