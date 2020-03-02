@@ -31,7 +31,7 @@ PITCH_CMD = "pitch 10" # cents
 REVERB_CMD = "reverb -w" # wet (vs dry)
 TEMOLO_CMD = "tremolo 20 40" # speed depth
 
-framesPerBuffer = 2048
+framesPerBuffer = 2**11
 samplingPeriod = 1.0/float(RATE)
 nd = notedetect.NoteDetector(framesPerBuffer, samplingPeriod)
 nd.noteDetectionThreshold = 0.1*len(nd.usableBins)*32767
@@ -70,18 +70,17 @@ def callback(in_data, frame_count, time_info, status):
     startNotes, stopNotes = nd.detectNotes()
     
     # No notes should be started
-    print("Second sample")
-    print("Notes started:")
-    for noteNum in startNotes:
-        print(noteNum)
+    if(len(startNotes) > 0):
+        for noteNum in startNotes:
+            print("Started:",noteNum)
     
     # One note should be stopped
-    print("Notes stopped:")
-    for noteNum in stopNotes:
-        print(noteNum)
+    if(len(stopNotes) > 0):
+        for noteNum in stopNotes:
+            print("Stopped:",noteNum)
     
-    #return (stdout, pyaudio.paContinue)
-    return (stdin, pyaudio.paStop)
+    return (stdin, pyaudio.paContinue)
+    #return (stdin, pyaudio.paStop)
 
 stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
                 channels=CHANNELS,

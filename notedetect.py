@@ -220,14 +220,17 @@ class NoteDetector:
         # Find spectrum values above threshold
         idx = 0
         while idx < self.numUsableBins:
-            # If the spectrum amplitude is higher than threshold
+            # If the spectrum amplitude is higher than threshold (indicating a note is being played)
             if self.transformed[idx] > self.noteDetectionThreshold:
-                print("Detected note: idx=",idx)
-                # Find corresponding midi note number
+                # Debug
+#                 print("Detected note: idx=",idx)
+                
+                # Find the corresponding midi note number
                 noteNum = self.noteMap[idx]
                 
                 # Set note to playing in the master note array
-                self.masterNoteArray[noteNum].isPlaying = True
+                note = self.masterNoteArray[noteNum]
+                note.isPlaying = True
                 
                 # Save note in currently playing list
                 self.currentNotes.append(noteNum)
@@ -235,19 +238,44 @@ class NoteDetector:
                 # Debug
 #                 print("Playing note:", noteNum, "at idx=", idx)
                 
-                # We don't have to inspect any more of the transformed array that correspond to this note
+                
+                # Skip-Ahead Section
+                # We don't have to inspect any more of the transformed array at indices that also
+                # correspond to this note
+                # Look for the starting index of the next note (saved on the master note array)
+                nextNoteFound = False
                 nextNoteNum = noteNum + 1
-                if(nextNoteNum < self.numPlayableNotes):
-                    # If there is another playable note to start inspection, then
-                    # Start looking at its lowest frequency bin
-                    idx = self.masterNoteArray[nextNoteNum].lowestNoteIdx
+                while not nextNoteFound:
+                    # If the next note is within the playable notes
+                    if(nextNoteNum < self.numPlayableNotes):
+                        
+                        # If the next note can be associated with a spot on the frequency array
+                        # Get the lowest index associated with that note
+                        tempIdx = self.masterNoteArray[nextNoteNum].lowestNoteIdx
+                        
+                        # If that index found is reasonable
+                        if(tempIdx >= 0):
+                            # Then jump ahead and continue scanning the transformation array at that index
+                            nextNoteFound = True
+                            idx = tempIdx
+                        else:
+                            # The next note has not been properly mapped (number of samples is too low)
+                            # Look at the next playable note
+                            nextNoteNum += 1
+                        # Debug
+#                         print("skipping to idx=", idx)
+                        
+                    else:
+                        # The next note pitch is too high.  Stop scanning the transformation array
+                        idx = self.numUsableBins # highest index, will halt outer loop
+                        nextNoteFound = True
+                        break
                     
-                    # Debug
-                    print("skipping to idx=", idx)
-                else:
-                    # We have finished note inspection, kick out
-                    break
-            else:
+                    
+                    
+                
+            else: # If this value is below the threshold
+                # Look at the next frequency bin
                 idx += 1
         
         # Check notes playing to determine if starting or stopping any notes
@@ -275,8 +303,9 @@ if __name__ == '__main__':
 
     t0 = 0
     tf = 0.1
-
-    f1 = 440.0
+    
+    f1 = 41.203 # low frequency, will be incorrectly interpretted
+    #f1 = 440.0
     f2 = 261.6
 
     t = np.arange(t0, tf, Ts)
