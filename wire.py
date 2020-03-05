@@ -2,7 +2,7 @@
 import pyaudio
 import time
 import numpy as np
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, run
 import shlex
 import notedetect
 import mido
@@ -16,7 +16,7 @@ wiringpi.pinMode(6,0)
 FORMAT = np.int16
 CHANNELS = 1
 RATE = 192000
-FRAMES = 2**13 #2**9 if (BYPASS) else 2**13
+FRAMES = 2**9
 PERIOD = 1.0/float(RATE)
 
 ENCODINGS_MAPPING = {
@@ -46,7 +46,10 @@ def wire(BYPASS, SOX):
     
 
     # MAIN CLASSES #
-    nd = notedetect.NoteDetector(FRAMES, PERIOD)
+    rate = RATE
+    frames_bypass = FRAMES
+    frames_synth = 2**13
+    nd = notedetect.NoteDetector(frames_synth, PERIOD)
     nd.noteDetectionThreshold = 0.18 * len(nd.usableBins) * 32767
     p = pyaudio.PyAudio()
 
@@ -77,10 +80,10 @@ def wire(BYPASS, SOX):
         nd.runFFT(stdin)
         startNotes, stopNotes = nd.detectNotes()
         
-        voice = np.zeros(FRAMES)
+        voice = np.zeros(frames_synth)
         for note in nd.currentNotes:
             f = notedetect.midiNoteToFrequency(note)
-            voice = (4000*np.sin(2*np.pi*np.arange(FRAMES)*f/RATE)).astype(FORMAT).tobytes()
+            voice = (5000*np.sin(2*np.pi*np.arange(frames_synth)*f/rate)).astype(FORMAT).tobytes()
             pass
         
         if(len(startNotes) > 0):
@@ -91,36 +94,87 @@ def wire(BYPASS, SOX):
         if(len(stopNotes) > 0):
             for noteNum in stopNotes:
                 outport.send(mido.Message('note_off', note=noteNum))
-                print("Stopped:",noteNum, notedetect.noteToLetter(noteNum))
         
         return (voice, pyaudio.paContinue)
 
 
     stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
                     channels=CHANNELS,
-                    rate=RATE,
+                    rate=rate,
                     input=True,
                     output=True,
-                    frames_per_buffer=FRAMES,
+                    frames_per_buffer=frames_bypass,
                     stream_callback=callback)
 
     stream.start_stream()
-
+    fsynth = None
+    event_count = 0
     while stream.is_active():
-#         uin = input("User input:")
-#         if uin == "1":
-#             BYPASS = not BYPASS
-#             SOX = not SOX
         presentVal = wiringpi.digitalRead(6)
         if presentVal == 0:
-            BYPASS = not BYPASS
-            SOX = not SOX
-        #print(presentVal)
-        time.sleep(0.2) # update Global
+            print("Press detected...")
+            event_count += 1
+            if event_count % 3 == 0:
+                print("Bypassing...")
+                BYPASS = True
+                SOX = False
+                
+                stream.stop_stream()
+                stream.close()
+                
+                if fsynth: fsynth.kill()
+                
+                stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
+                    channels=CHANNELS,
+                    rate=rate,
+                    input=True,
+                    output=True,
+                    frames_per_buffer=frames_bypass,
+                    stream_callback=callback)
+                stream.start_stream()
+                
+            elif event_count % 3 == 1:
+                print("Overdriving...")
+                BYPASS = False
+                SOX = True
+                
+                stream.stop_stream()
+                stream.close()
+                
+                stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
+                    channels=CHANNELS,
+                    rate=rate,
+                    input=True,
+                    output=True,
+                    frames_per_buffer=frames_synth,
+                    stream_callback=callback)
+                stream.start_stream()
+                
+            else:
+                print("Synth...")
+                BYPASS = False
+                SOX = False
+                
+                stream.stop_stream()
+                stream.close()
+                
+                fsynth = Popen(["fluidsynth", "--audio-driver=alsa",
+                                "--gain", "3", "/usr/share/sounds/sf2/FluidR3_GM.sf2"])
+                
+                stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
+                    channels=CHANNELS,
+                    rate=rate,
+                    input=True,
+                    output=False,
+                    frames_per_buffer=frames_synth,
+                    stream_callback=callback)
+                stream.start_stream()
+                
+        time.sleep(0.3)
 
     stream.stop_stream()
     stream.close()
     p.terminate()
 
 if __name__ == "__main__":
-    wire(False, False)
+    wire(True, False)
