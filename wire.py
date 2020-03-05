@@ -46,6 +46,7 @@ def wire(BYPASS, SOX):
     
 
     # MAIN CLASSES #
+    run(["aconnect", "-x"]) # Remove outstanding audio connections
     rate = RATE
     frames_bypass = FRAMES
     frames_synth = 2**13
@@ -160,6 +161,17 @@ def wire(BYPASS, SOX):
                 
                 fsynth = Popen(["fluidsynth", "--audio-driver=alsa",
                                 "--gain", "3", "/usr/share/sounds/sf2/FluidR3_GM.sf2"])
+                # maybe sleep
+                fluid_synth_port = ""
+                while(fluid_synth_port == ""):
+                    try:
+                        acon_out = run(["aconnect", "-o"], capture_output=True)
+                        acon_out = str(acon_out).split(' ')
+                        fluid_synth_port = int(acon_out[acon_out.index("'FLUID") - 1][:-1])
+                    except:
+                        time.sleep(.5)
+                
+                run(["aconnect", "14:0", str(fluid_synth_port) + ":0"])
                 
                 stream = p.open(format=ENCODINGS_MAPPING_PYAUDIO[FORMAT],
                     channels=CHANNELS,
